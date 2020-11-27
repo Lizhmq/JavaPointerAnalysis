@@ -1,0 +1,29 @@
+public class benchmark.objects.N extends java.lang.Object
+{
+    public java.lang.String value;
+    public benchmark.objects.N next;
+
+    public void <init>()
+    {
+        benchmark.objects.N this, temp$1;
+        java.lang.String temp$0;
+
+        this := @this: benchmark.objects.N;
+
+        specialinvoke this.<java.lang.Object: void <init>()>();
+
+        temp$0 = "";
+
+        this.<benchmark.objects.N: java.lang.String value> = temp$0;
+
+        staticinvoke <benchmark.internal.Benchmark: void alloc(int)>(2);
+
+        temp$1 = new benchmark.objects.N;
+
+        specialinvoke temp$1.<benchmark.objects.N: void <init>()>();
+
+        this.<benchmark.objects.N: benchmark.objects.N next> = temp$1;
+
+        return;
+    }
+}

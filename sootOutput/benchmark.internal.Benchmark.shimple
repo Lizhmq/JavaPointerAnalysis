@@ -1,0 +1,35 @@
+public class benchmark.internal.Benchmark extends java.lang.Object
+{
+
+    public static void alloc(int)
+    {
+        int id;
+
+        id := @parameter0: int;
+
+        return;
+    }
+
+    public static void test(int, java.lang.Object)
+    {
+        int id;
+        java.lang.Object targetVariable;
+
+        id := @parameter0: int;
+
+        targetVariable := @parameter1: java.lang.Object;
+
+        return;
+    }
+
+    public void <init>()
+    {
+        benchmark.internal.Benchmark this;
+
+        this := @this: benchmark.internal.Benchmark;
+
+        specialinvoke this.<java.lang.Object: void <init>()>();
+
+        return;
+    }
+}

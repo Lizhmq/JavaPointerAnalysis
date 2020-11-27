@@ -1,0 +1,56 @@
+public class test.ssa extends java.lang.Object
+{
+
+    public static void main(java.lang.String[])
+    {
+        java.lang.String[] args;
+        benchmark.objects.A a, temp$0, b, temp$1, c, temp$2, c_1;
+
+        args := @parameter0: java.lang.String[];
+
+        staticinvoke <benchmark.internal.BenchmarkN: void alloc(int)>(1);
+
+        temp$0 = new benchmark.objects.A;
+
+        specialinvoke temp$0.<benchmark.objects.A: void <init>()>();
+
+        a = temp$0;
+
+        staticinvoke <benchmark.internal.BenchmarkN: void alloc(int)>(2);
+
+        temp$1 = new benchmark.objects.A;
+
+        specialinvoke temp$1.<benchmark.objects.A: void <init>()>();
+
+        b = temp$1;
+
+        staticinvoke <benchmark.internal.BenchmarkN: void alloc(int)>(3);
+
+        temp$2 = new benchmark.objects.A;
+
+        specialinvoke temp$2.<benchmark.objects.A: void <init>()>();
+
+        c = temp$2;
+
+        staticinvoke <benchmark.internal.BenchmarkN: void test(int,java.lang.Object)>(1, a);
+
+        staticinvoke <benchmark.internal.BenchmarkN: void test(int,java.lang.Object)>(2, c);
+
+        c_1 = a;
+
+        staticinvoke <benchmark.internal.BenchmarkN: void test(int,java.lang.Object)>(3, c_1);
+
+        return;
+    }
+
+    public void <init>()
+    {
+        test.ssa this;
+
+        this := @this: test.ssa;
+
+        specialinvoke this.<java.lang.Object: void <init>()>();
+
+        return;
+    }
+}
