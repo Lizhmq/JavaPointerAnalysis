@@ -29,6 +29,16 @@ public class Generator {
 		}
 	}
 
+	static void output(int id, ArrayList<Integer> ptsto)
+	{
+		String ans = Integer.toString(id);
+		ans += " :";
+		for(Integer i : ptsto) ans += (" " + Integer.toString(i));
+		ans += "\n";
+		System.out.print(ans);
+	}
+
+
 	public void WriteTo(String path) {
 		try {
 			PrintStream ps = new PrintStream(

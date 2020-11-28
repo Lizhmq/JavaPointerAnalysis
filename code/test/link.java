@@ -13,6 +13,7 @@ public class link {
         a = b;
         a.next = b;
         BenchmarkN.test(1, a);
+        BenchmarkN.test(2, a.next);
     }
 
 }

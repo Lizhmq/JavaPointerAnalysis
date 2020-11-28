@@ -1,11 +1,12 @@
 import java.util.*;
 
-import com.sun.tools.doclint.Env;
+import fj.Hash;
 import soot.*;
 import soot.jimple.*;
 import soot.toolkits.graph.DirectedGraph;
 import soot.toolkits.graph.ExceptionalUnitGraph;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
+import soot.util.Cons;
 
 
 public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
@@ -23,7 +24,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 	public SootMethod sootMethod;
 	public String methodname;
 
-	public HashMap<Value, Unit> v2u = new HashMap<>();
+	public HashMap<Local, Qvar> l2q = new HashMap<>();
 
 	AndersonAnalyser(SootMethod _sootMethod, ExceptionalUnitGraph _eg, PATransformer paTransformer) {
 		super(_eg);
@@ -38,7 +39,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
 		doAnalysis();
 
-		//output();
+		output();
 	}
 
 
@@ -55,25 +56,67 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 		}
 		else if(unit instanceof AssignStmt)
 		{
-//			System.out.println(unit.toString());
-//			System.out.println("AssignStmt");
 			AssignStmt identityStmt = (AssignStmt) unit;
 			Value left = identityStmt.getLeftOp(), right = identityStmt.getRightOp();
-			v2u.put(left, unit);
+
+			HashSet<Qvar> rs = new HashSet<>();
 
 			if(right instanceof AnyNewExpr)
 			{
-				ArrayList<Integer> newset = new ArrayList<>();
-				newset.add(out.getAllocid());
-				if(out.lattice.containsKey(left)) out.lattice.replace(right, newset);
-				else out.lattice.put(left, newset);
-				System.out.println(unit.toString());
+				rs.add(new Qvar(right, out.getAllocid(), out));
 			}
+			else if(right instanceof Constant);
 			else if(right instanceof Local)
+				rs.add(out.getCreate((Local) right));
+			else if(right instanceof FieldRef)
 			{
-
+				SootFieldRef sootFieldRef = ((FieldRef) right).getFieldRef();
+				if(right instanceof InstanceFieldRef)
+				{
+					Local localF = (Local) ((InstanceFieldRef) right).getBase();
+					out.getFields(rs, localF, right, sootFieldRef);
+				}
 			}
+			else return;
+
+			if(rs.size() != 0)
+			{
+				if(left instanceof Local)
+				{
+					Qvar lvar = out.getCreate((Local) left);
+					lvar.assignRep(rs, out);
+				}
+				else if(left instanceof FieldRef)
+				{
+					SootFieldRef sootFieldRef = ((FieldRef) left).getFieldRef();
+					if(left instanceof InstanceFieldRef)
+					{
+						Local localF = (Local) ((InstanceFieldRef) left).getBase();
+						Qvar lvar = out.getCreate(localF);
+
+						HashSet<Value> ls = new HashSet<>();
+						for(Integer i : lvar.ptr)
+						{
+							ls.removeAll(out.ref.get(i));
+							ls.addAll(out.ref.get(i));
+						}
+						for(Value value : ls)
+						{
+							Qvar posvar = out.getCreate(value);
+							posvar.fieldAss(sootFieldRef, value, rs, out);
+						}
+					}
+				}
+			}
+
+			for(Qvar qvar: rs)
+			{
+				if(qvar.value.toString().contains("new benchmark.objects"))
+					out.removeValue(qvar.value);
+			}
+
 		}
+
 		else if(unit instanceof InvokeStmt)
 		{
 			InvokeExpr invokeExpr = ((InvokeStmt) unit).getInvokeExpr();
@@ -116,20 +159,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
 	@Override
 	protected void merge(Environ in1, Environ in2, Environ out) {
-		out.copy(in1);
-
-		for(Value value: in2.lattice.keySet())
-		{
-			if(out.lattice.containsKey(value))
-			{
-				for(Integer i : in2.lattice.get(value))
-				{
-					out.lattice.get(value).removeAll(in2.lattice.get(value));
-					out.lattice.get(value).addAll(in2.lattice.get(value));
-				}
-			}
-			else out.lattice.put(value, new ArrayList<>(in2.lattice.get(value)));
-		}
+		out.merge(in1, in2);
 	}
 
 	@Override
@@ -144,9 +174,37 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 		{
 			Unit unit = querydst.get(i);
 			Value obj = queryobj.get(i);
-			Environ environ = getFlowAfter(unit);
-			ArrayList<Integer> ans = new ArrayList<>(environ.lattice.get(obj));
-			ptsto.put(i, ans);
+			Environ e = getFlowAfter(unit);
+//			ArrayList<Integer> ans = new ArrayList<>(environ.lattice.get(obj));
+//			ptsto.put(i, ans);
+
+			if(obj instanceof Local)
+			{
+				Qvar qvar = e.l2q.get(obj);
+				ArrayList<Integer> pt = qvar.ptr;
+				Generator.output(i, pt);
+			}
+			else if(obj instanceof FieldRef)
+			{
+				ArrayList<Integer> pt = new ArrayList<>();
+				SootFieldRef sootFieldRef = ((FieldRef) obj).getFieldRef();
+				if(obj instanceof InstanceFieldRef)
+				{
+					Local localF = (Local) ((InstanceFieldRef) obj).getBase();
+					Qvar lvar = e.getCreate(localF);
+					for(Integer j : lvar.ptr)
+					{
+						HashSet<Value> ls = e.ref.get(j);
+						for(Value value : ls)
+						{
+							Qvar posvar = e.getCreate(value);
+							posvar.listConverge(sootFieldRef, pt, e);
+						}
+					}
+				}
+
+				Generator.output(i, pt);
+			}
 		}
 	}
 
