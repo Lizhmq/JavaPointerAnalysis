@@ -18,6 +18,8 @@ public class PATransformer extends SceneTransformer {
 //	public ArrayList<Integer> queryid = new ArrayList<>();
 //	public HashMap<Integer, Value> queries = new HashMap<>();
 	public Map<Integer, List<Integer>> ptsto = new HashMap<>();
+	public ArrayList<String> callStack = new ArrayList<>();
+
 
 	PATransformer(String _className) {
 		super();
@@ -33,9 +35,10 @@ public class PATransformer extends SceneTransformer {
 
 		AndersonAnalyser ad = new AndersonAnalyser(mainMethod, new ExceptionalUnitGraph(mainMethod.getActiveBody()),
 				this, new Environ(), null, null);
+		Generator.output(ptsto);
 //		ad.output();
 
-		System.out.println("wow");
+//		System.out.println("wow");
 
 	}
 

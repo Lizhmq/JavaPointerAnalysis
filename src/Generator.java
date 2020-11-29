@@ -1,14 +1,10 @@
-import java.util.Map;
-import java.util.Set;
-
+import java.util.*;
 
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import soot.Local;
 
@@ -29,13 +25,37 @@ public class Generator {
 		}
 	}
 
-	static void output(int id, ArrayList<Integer> ptsto)
+//	static void output(int id, ArrayList<Integer> ptsto)
+//	{
+//		String ans = Integer.toString(id);
+//		ans += " :";
+//		for(Integer i : ptsto) ans += (" " + Integer.toString(i));
+//		ans += "\n";
+//		System.out.print(ans);
+//	}
+
+	static void output(Map<Integer, List<Integer>> ptsto)
 	{
-		String ans = Integer.toString(id);
-		ans += " :";
-		for(Integer i : ptsto) ans += (" " + Integer.toString(i));
-		ans += "\n";
-		System.out.print(ans);
+		String ans = "";
+
+		ArrayList<Integer> query = new ArrayList<>(ptsto.keySet());
+		Collections.sort(query);
+		for(Integer id : query)
+		{
+			String temp = Integer.toString(id);
+			temp += ":";
+			for(Integer i : ptsto.get(id)) temp += (" " + Integer.toString(i));
+			ans += (temp + "\n");
+		}
+		try {
+			PrintStream ps = new PrintStream(
+					new FileOutputStream(new File("./result.txt")));
+			ps.println(ans);
+			ps.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 

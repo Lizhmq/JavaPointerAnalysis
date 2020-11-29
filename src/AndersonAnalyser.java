@@ -50,6 +50,9 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 		caller = _caller;
 		pArgs = _pArgs;
 
+		bg.callStack.add(sootMethod.getSignature());
+//		System.out.println(sootMethod.getSignature());
+
 		doAnalysis();
 
 		output();
@@ -114,7 +117,8 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 						}
 						for (Value value : ls) {
 							Qvar posvar = out.getCreate(value, this);
-							posvar.fieldAss(sootFieldRef, value, rs, out);
+							if(lvar.ptr.size() == 1) posvar.fieldAss(sootFieldRef, value, rs, out, false);
+							else posvar.fieldAss(sootFieldRef, value, rs, out, true);
 						}
 					}
 				}
@@ -136,6 +140,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
 			if (invokeExpr instanceof InstanceInvokeExpr) {
 				if (invokemethod.getSignature().contains("java.lang.Object: void <init>")) return;
+				if(bg.callStack.contains(invokemethod.getSignature())) return;
 //				System.out.print("Calling    :");
 //				System.out.println(invokemethod.getSignature());
 
@@ -246,7 +251,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
 	void output()
 	{
-		Collections.sort(queryid);
+//		Collections.sort(queryid);
 		for(int i : queryid)
 		{
 			Unit unit = querydst.get(i);
@@ -259,7 +264,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 			{
 				Qvar qvar = e.l2q.get(obj);
 				ArrayList<Integer> pt = qvar.ptr;
-				Generator.output(i, pt);
+				ptsto.put(i, pt);
 			}
 			else if(obj instanceof FieldRef)//not to used
 			{
@@ -280,7 +285,7 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 					}
 				}
 
-				Generator.output(i, pt);
+				ptsto.put(i, pt);
 			}
 		}
 
@@ -297,6 +302,8 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
 		backgroundFlow.copy(ans);
 		garCollection(backgroundFlow);
+
+		bg.callStack.remove(sootMethod.getSignature());
 	}
 
 }

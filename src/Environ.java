@@ -117,7 +117,7 @@ public class Environ {
         Environ e = (Environ) obj;
 
         if(allocvalid != e.allocvalid) return false;
-        if(l2q.size() != e.l2q.size() || ref.size() != e.l2q.size()) return false;
+        if(l2q.size() != e.l2q.size() || ref.size() != e.ref.size()) return false;
 
         for(Value value: l2q.keySet())
         {

@@ -95,7 +95,7 @@ public class Qvar {
     }
 
 
-    public void fieldAss(SootFieldRef s, Value ls, HashSet<Qvar> rs, Environ out)
+    public void fieldAss(SootFieldRef s, Value ls, HashSet<Qvar> rs, Environ out, boolean flag)
     {
         Value val = fields.get(s);
 
@@ -108,7 +108,7 @@ public class Qvar {
         }
         fields.put(s, val);
 
-        if(ptr.size() > 1) out.l2q.get(fields.get(s)).assignMer(rs, out);
+        if(ptr.size() > 1 || flag == true) out.l2q.get(fields.get(s)).assignMer(rs, out);
         else out.l2q.get(fields.get(s)).assignRep(rs, out);
     }
 
