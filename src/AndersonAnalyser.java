@@ -11,8 +11,6 @@ import soot.util.Cons;
 
 public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 
-//	public ArrayList<Integer> queryid;
-//	public HashMap<Integer, Value> queries;
 	public Map<Integer, List<Integer>> ptsto;
 
 	public HashMap<Integer, Value> queryobj = new HashMap<>();
@@ -24,18 +22,33 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 	public SootMethod sootMethod;
 	public String methodname;
 
-	public HashMap<Local, Qvar> l2q = new HashMap<>();
+	public PATransformer bg;
+	public Environ backgroundFlow;
+	public Value caller;
+	public Value newthis = null;
 
-	AndersonAnalyser(SootMethod _sootMethod, ExceptionalUnitGraph _eg, PATransformer paTransformer) {
+//	public Qvar savedQ = null;
+	public HashSet<Integer> savedRef = new HashSet<>();
+
+	public List<Value> pArgs = null;
+	public int idxArgs = 0;
+
+	public HashSet<Value> localAdded = new HashSet<>();
+
+	AndersonAnalyser(SootMethod _sootMethod, ExceptionalUnitGraph _eg,
+					 PATransformer paTransformer, Environ bf, Value _caller, List<Value> _pArgs) {
 		super(_eg);
 
 		eg = _eg;
 		sootMethod = _sootMethod;
 		methodname = sootMethod.getName();
 
-//		queryid = paTransformer.queryid;
-//		queries = paTransformer.queries;
+		bg = paTransformer;
 		ptsto = paTransformer.ptsto;
+
+		backgroundFlow = bf;
+		caller = _caller;
+		pArgs = _pArgs;
 
 		doAnalysis();
 
@@ -47,99 +60,94 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 	protected void flowThrough(Environ in, Unit unit, Environ out) {
 		out.copy(in);
 
-		if(unit instanceof IdentityStmt)
-		{
+		//System.out.println(unit.toString());
+		if (unit instanceof IdentityStmt) {
 //			System.out.println(unit.toString());
-//			System.out.println("IdentityStmt");
+//			System.out.println(((IdentityStmt) unit).getLeftOp().toString());
+
 			IdentityStmt identityStmt = (IdentityStmt) unit;
 			Value left = identityStmt.getLeftOp(), right = identityStmt.getRightOp();
-		}
-		else if(unit instanceof AssignStmt)
-		{
+
+			if(right.toString().contains("@this") && newthis == null) saveAddThis(left, out);
+			else if(right.toString().contains("@parameter") && pArgs != null && pArgs.size() > idxArgs)
+			{
+				HashSet<Qvar> rs = new HashSet<>();
+				rs.add(out.getCreate(pArgs.get(idxArgs), this));
+				Qvar ls = out.getCreate(left, this);
+				ls.assignRep(rs, out);
+				idxArgs = idxArgs + 1;
+			}
+
+		} else if (unit instanceof AssignStmt) {
 			AssignStmt identityStmt = (AssignStmt) unit;
 			Value left = identityStmt.getLeftOp(), right = identityStmt.getRightOp();
 
 			HashSet<Qvar> rs = new HashSet<>();
 
-			if(right instanceof AnyNewExpr)
-			{
+			if (right instanceof AnyNewExpr) {
 				rs.add(new Qvar(right, out.getAllocid(), out));
-			}
-			else if(right instanceof Constant);
-			else if(right instanceof Local)
-				rs.add(out.getCreate((Local) right));
-			else if(right instanceof FieldRef)
-			{
+			} else if (right instanceof Constant) ;
+			else if (right instanceof Local)
+				rs.add(out.getCreate((Local) right, this));
+			else if (right instanceof FieldRef) {
 				SootFieldRef sootFieldRef = ((FieldRef) right).getFieldRef();
-				if(right instanceof InstanceFieldRef)
-				{
+				if (right instanceof InstanceFieldRef) {
 					Local localF = (Local) ((InstanceFieldRef) right).getBase();
 					out.getFields(rs, localF, right, sootFieldRef);
 				}
-			}
-			else return;
+			} else return;
 
-			if(rs.size() != 0)
-			{
-				if(left instanceof Local)
-				{
-					Qvar lvar = out.getCreate((Local) left);
+			if (rs.size() != 0) {
+				if (left instanceof Local) {
+					Qvar lvar = out.getCreate((Local) left, this);
 					lvar.assignRep(rs, out);
-				}
-				else if(left instanceof FieldRef)
-				{
+				} else if (left instanceof FieldRef) {
 					SootFieldRef sootFieldRef = ((FieldRef) left).getFieldRef();
-					if(left instanceof InstanceFieldRef)
-					{
+					if (left instanceof InstanceFieldRef) {
 						Local localF = (Local) ((InstanceFieldRef) left).getBase();
-						Qvar lvar = out.getCreate(localF);
+						Qvar lvar = out.getCreate(localF, this);
 
 						HashSet<Value> ls = new HashSet<>();
-						for(Integer i : lvar.ptr)
-						{
+						for (Integer i : lvar.ptr) {
 							ls.removeAll(out.ref.get(i));
 							ls.addAll(out.ref.get(i));
 						}
-						for(Value value : ls)
-						{
-							Qvar posvar = out.getCreate(value);
+						for (Value value : ls) {
+							Qvar posvar = out.getCreate(value, this);
 							posvar.fieldAss(sootFieldRef, value, rs, out);
 						}
 					}
 				}
 			}
 
-			for(Qvar qvar: rs)
-			{
-				if(qvar.value.toString().contains("new benchmark.objects"))
+			for (Qvar qvar : rs) {
+				if (qvar.value.toString().contains("new "))
 					out.removeValue(qvar.value);
 			}
 
-		}
-
-		else if(unit instanceof InvokeStmt)
-		{
+		} else if (unit instanceof InvokeStmt) {
 			InvokeExpr invokeExpr = ((InvokeStmt) unit).getInvokeExpr();
 			List<Value> invokeArgs = invokeExpr.getArgs();
 
-			if(invokeExpr == null) return;
+			if (invokeExpr == null) return;
 
 			SootMethod invokemethod = invokeExpr.getMethod();
 
 
-			if(invokeExpr instanceof InstanceInvokeExpr)
-			{
+			if (invokeExpr instanceof InstanceInvokeExpr) {
+				if (invokemethod.getSignature().contains("java.lang.Object: void <init>")) return;
+//				System.out.print("Calling    :");
+//				System.out.println(invokemethod.getSignature());
 
-			}
-			else if(invokemethod.getSignature().contains("benchmark.internal"))
-			{
-				if(invokemethod.getSignature().contains("void alloc"))
-				{
+				Value ib = ((InstanceInvokeExpr) invokeExpr).getBase();
+				AndersonAnalyser next = new AndersonAnalyser(invokemethod,
+						new ExceptionalUnitGraph(invokemethod.getActiveBody()), bg, out, ib, invokeArgs);
+
+			} else if (invokemethod.getSignature().contains("benchmark.internal")) {
+				if (invokemethod.getSignature().contains("void alloc")) {
 					out.allocvalid = true;
 					out.allocid = ((IntConstant) invokeArgs.get(0)).value;
-				}
-				else if(invokemethod.getSignature().contains("void test"))
-				{
+				} else if (invokemethod.getSignature().contains("void test")) {
 					int id = ((IntConstant) invokeArgs.get(0)).value;
 					Value obj = invokeArgs.get(1);
 					queryid.add(id);
@@ -150,6 +158,13 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 			}
 		}
 
+	}
+
+	@Override
+	protected Environ entryInitialFlow() {
+		Environ res = new Environ();
+		res.copy(backgroundFlow);
+		return res;
 	}
 
 	@Override
@@ -166,6 +181,68 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 	protected void copy(Environ src, Environ dst) {
 		dst.copy(src);
 	}
+
+	public void saveAddThis(Value newv, Environ e)
+	{
+		newthis = newv;
+//		savedQ = e.l2q.get(oldv);
+//
+//		if(savedQ != null)
+//		{
+//			e.l2q.remove(oldv);
+//			for (Integer i : e.ref.keySet())
+//			{
+//				if (e.ref.get(i).contains(oldv))
+//				{
+//					e.ref.get(i).remove(oldv);
+//					savedRef.add(i);
+//				}
+//			}
+//		}
+		HashSet<Qvar> rs = new HashSet<>();
+		rs.add(e.getCreate(caller, this));
+		Qvar ls = e.getCreate(newv, this);
+		ls.assignRep(rs, e);
+	}
+
+	public void garCollection(Environ e)
+	{
+		Vector<Value> q = new Vector<>();
+		q.addAll(localAdded);
+
+		while(!q.isEmpty())
+		{
+			Value head = q.firstElement();
+			q.remove(head);
+			Qvar val = e.l2q.get(head);
+
+			if(val == null) continue;
+			for(SootFieldRef s: val.fields.keySet())
+			{
+				if(!localAdded.contains(val.fields.get(s))) q.add(val.fields.get(s));
+			}
+		}
+
+		ArrayList<Integer> garbage = new ArrayList<>();
+		for(Integer i : e.ref.keySet())
+		{
+			e.ref.get(i).removeAll(localAdded);
+			if(e.ref.get(i).size() == 0) garbage.add(i);
+		}
+		for(Integer i : garbage) e.ref.remove(i);
+
+		for(Value del : localAdded)
+			e.l2q.remove(del);
+//		if(savedQ != null)
+//		{
+//			e.l2q.put(caller, savedQ);
+//			for(Integer i : savedRef)
+//			{
+//				e.ref.get(i).add(caller);
+//			}
+//		}
+	}
+
 
 	void output()
 	{
@@ -184,20 +261,20 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 				ArrayList<Integer> pt = qvar.ptr;
 				Generator.output(i, pt);
 			}
-			else if(obj instanceof FieldRef)
+			else if(obj instanceof FieldRef)//not to used
 			{
 				ArrayList<Integer> pt = new ArrayList<>();
 				SootFieldRef sootFieldRef = ((FieldRef) obj).getFieldRef();
 				if(obj instanceof InstanceFieldRef)
 				{
 					Local localF = (Local) ((InstanceFieldRef) obj).getBase();
-					Qvar lvar = e.getCreate(localF);
+					Qvar lvar = e.getCreate(localF, this);
 					for(Integer j : lvar.ptr)
 					{
 						HashSet<Value> ls = e.ref.get(j);
 						for(Value value : ls)
 						{
-							Qvar posvar = e.getCreate(value);
+							Qvar posvar = e.getCreate(value, this);
 							posvar.listConverge(sootFieldRef, pt, e);
 						}
 					}
@@ -206,6 +283,20 @@ public class AndersonAnalyser extends ForwardFlowAnalysis<Unit, Environ> {
 				Generator.output(i, pt);
 			}
 		}
+
+
+		List<Unit> tails = graph.getTails();
+		Environ ans = new Environ();
+		Environ last = new Environ();
+		for(Unit u: tails)
+		{
+			ans = new Environ();
+			ans.merge(last, getFlowAfter(u));
+			last.copy(ans);
+		}
+
+		backgroundFlow.copy(ans);
+		garCollection(backgroundFlow);
 	}
 
 }

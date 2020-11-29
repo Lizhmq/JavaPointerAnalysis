@@ -19,11 +19,14 @@ public class Qvar {
         value =  _value;
 
         Value del = null;
-        for(Value tmp : e.l2q.keySet())
+        if(value instanceof SootFieldRef)
         {
-            if(!tmp.toString().equals(value.toString())) continue;
-            del = tmp;
-            break;
+            for (Value tmp : e.l2q.keySet())
+            {
+                if (!tmp.toString().equals(value.toString())) continue;
+                del = tmp;
+                break;
+            }
         }
 
         if(allocid != -1)
@@ -87,9 +90,10 @@ public class Qvar {
             }
         }
 
-        fields.putAll(fields);
+        fields.putAll(qvar.fields);
         e.l2q.put(value, this);
     }
+
 
     public void fieldAss(SootFieldRef s, Value ls, HashSet<Qvar> rs, Environ out)
     {
@@ -103,7 +107,9 @@ public class Qvar {
             val = qvar.value;
         }
         fields.put(s, val);
-        out.l2q.get(fields.get(s)).assignMer(rs, out);
+
+        if(ptr.size() > 1) out.l2q.get(fields.get(s)).assignMer(rs, out);
+        else out.l2q.get(fields.get(s)).assignRep(rs, out);
     }
 
     public void listConverge(SootFieldRef s, ArrayList<Integer> ans, Environ e)

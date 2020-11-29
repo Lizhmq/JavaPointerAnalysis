@@ -28,6 +28,8 @@ public class Environ {
         allocid = e.allocid;
         allocvalid = e.allocvalid;
 
+        l2q.clear();
+        ref.clear();
         for(Value value : e.l2q.keySet())
             l2q.put(value, new Qvar(e.l2q.get(value), this));
 
@@ -37,33 +39,14 @@ public class Environ {
             ref.put(i, n1);
         }
 
-//        HashMap<Qvar, Local> q2l = new HashMap<>();
-//        HashMap<Rval, Value> r2v = new HashMap<>();
-//        for(Local local : e.l2q.keySet())
-//        {
-//            Qvar qvar = l2q.get(local).copy();
-//            l2q.put(local, qvar);
-//            q2l.put(qvar, local);
-//        }
-//
-//        for(Value value: e.v2r.keySet())
-//        {
-//            Rval rval = e.v2r.get(value).copy(q2l, l2q);
-//            v2r.put(value, rval);
-//            r2v.put(rval, value);
-//        }
-//
-//        for(Local local: l2q.keySet())
-//        {
-//            Qvar qvar = l2q.get(local);
-//            qvar.rval = v2r.get(r2v.get(qvar.rval));
-//        }
     }
 
     public void copy(Environ e) {
         allocid = e.allocid;
         allocvalid = e.allocvalid;
 
+        l2q.clear();
+        ref.clear();
         for(Value value : e.l2q.keySet())
             l2q.put(value, new Qvar(e.l2q.get(value), this));
 
@@ -72,28 +55,6 @@ public class Environ {
             HashSet<Value> n1 = new HashSet<>(e.ref.get(i));
             ref.put(i, n1);
         }
-
-//        HashMap<Qvar, Local> q2l = new HashMap<>();
-//        HashMap<Rval, Value> r2v = new HashMap<>();
-//        for(Local local : e.l2q.keySet())
-//        {
-//            Qvar qvar = l2q.get(local).copy();
-//            l2q.put(local, qvar);
-//            q2l.put(qvar, local);
-//        }
-//
-//        for(Value value: e.v2r.keySet())
-//        {
-//            Rval rval = e.v2r.get(value).copy(q2l, l2q);
-//            v2r.put(value, rval);
-//            r2v.put(rval, value);
-//        }
-//
-//        for(Local local: l2q.keySet())
-//        {
-//            Qvar qvar = l2q.get(local);
-//            qvar.rval = v2r.get(r2v.get(qvar.rval));
-//        }
 
     }
 
@@ -119,10 +80,13 @@ public class Environ {
     }
 
 
-    public Qvar getCreate(Value value)
+    public Qvar getCreate(Value value, AndersonAnalyser bg)
     {
         if(l2q.containsKey(value)) return l2q.get(value);
-        return new Qvar(value, -1, this);
+
+        Qvar ans = new Qvar(value, -1, this);
+        bg.localAdded.add(value);
+        return ans;
     }
 
     void merge(Environ in1, Environ in2)
@@ -138,39 +102,6 @@ public class Environ {
             if (l2q.containsKey(value)) l2q.get(value).assignMer(in2.l2q.get(value), this);
             else l2q.put(value, new Qvar(in2.l2q.get(value), this));
         }
-//
-//        allocvalid = e1.allocvalid || allocvalid;
-//        allocid = e1.allocid > 0 ? e1.allocid : allocid;
-//
-//        for(Local local : e1.l2q.keySet())
-//        {
-//            if(l2q.containsKey(local))
-//            {
-//                Qvar le = l2q.get(local), ri = e1.l2q.get(local);
-//
-//            }
-//        }
-
-
-
-//        for(Value value : e1.v2r.keySet())
-//        {
-//
-//            if(e2.v2r.containsKey(value))
-//            {
-//                Rval rval = e1.v2r.get(value).copy();
-//
-//            }
-//
-//        }
-//
-//        for(Local local : e1.l2q.keySet())
-//        {
-//            Qvar q = e1.l2q.get(local).copy();
-//            q.ptr.removeAll(e2.l2q.get(local).ptr);
-//            q.ptr.addAll(e2.l2q.get(local).ptr);
-//
-//        }
     }
 
     void removeValue(Value tmp)

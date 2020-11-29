@@ -31,7 +31,8 @@ public class PATransformer extends SceneTransformer {
 //		SootMethod method = mainClass.getMethodByName("main");
 		SootMethod mainMethod = Scene.v().getMainMethod();
 
-		AndersonAnalyser ad = new AndersonAnalyser(mainMethod, new ExceptionalUnitGraph(mainMethod.getActiveBody()), this);
+		AndersonAnalyser ad = new AndersonAnalyser(mainMethod, new ExceptionalUnitGraph(mainMethod.getActiveBody()),
+				this, new Environ(), null, null);
 //		ad.output();
 
 		System.out.println("wow");
